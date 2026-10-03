@@ -9,7 +9,32 @@ router.get('/bookings', async (req, res) => {
   const bookings = await Booking.find().sort({ createdAt: -1 });
   res.json(bookings);
 });
+// POST /api/public/book
+router.post('/public/book', async (req, res) => {
+  try {
+    const { guestName, phone, email, roomType, checkInDate, checkOutDate } = req.body;
 
+    // Create the booking with a default status of "Reserved" and 0 advance
+    const newBooking = new Booking({
+      guestName,
+      phone,
+      email,
+      roomType,
+      checkInDate,
+      checkOutDate,
+      status: 'Reserved', 
+      advancePaid: 0 
+      // Note: roomNumber and roomRate might be assigned later by the admin 
+      // or calculated here based on roomType
+    });
+
+    await newBooking.save();
+    res.status(201).json({ message: 'Booking request sent successfully!', booking: newBooking });
+  } catch (error) {
+    console.error("Public booking error:", error);
+    res.status(500).json({ error: 'Failed to create booking' });
+  }
+});
 // Create new booking (Auto-detects if it's a Future Reservation)
 router.post('/bookings', async (req, res) => {
   try {
