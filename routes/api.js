@@ -14,25 +14,39 @@ router.post('/public/book', async (req, res) => {
   try {
     const { guestName, phone, email, roomType, checkInDate, checkOutDate } = req.body;
 
-    // Create the booking with a default status of "Reserved" and 0 advance
+    // 1. Determine the room rate based on the selection
+    let roomRate = 7500;
+    if (roomType === 'Deluxe') roomRate = 15000;
+    if (roomType === 'Super Luxury') roomRate = 20500;
+
+    // 2. Calculate the total charge (Days * Rate)
+    const checkIn = new Date(checkInDate);
+    const checkOut = new Date(checkOutDate);
+    const diffTime = Math.abs(checkOut - checkIn);
+    const totalDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) || 1; // Default to 1 if same day
+    const totalRoomCharge = totalDays * roomRate;
+
+    // 3. Save with all required schema fields to prevent MongoDB errors
     const newBooking = new Booking({
       guestName,
       phone,
-      email,
+      email: email || "", // Default to empty string if undefined
       roomType,
+      roomNumber: 0,      // Placeholder! 0 means "Not Assigned Yet"
+      roomRate,
       checkInDate,
       checkOutDate,
-      status: 'Reserved', 
-      advancePaid: 0 
-      // Note: roomNumber and roomRate might be assigned later by the admin 
-      // or calculated here based on roomType
+      totalRoomCharge,
+      advancePaid: 0,
+      status: 'Reserved'
     });
 
     await newBooking.save();
     res.status(201).json({ message: 'Booking request sent successfully!', booking: newBooking });
   } catch (error) {
-    console.error("Public booking error:", error);
-    res.status(500).json({ error: 'Failed to create booking' });
+    // This logs the EXACT reason it failed to your Render logs
+    console.error("Public booking error:", error); 
+    res.status(500).json({ error: 'Failed to create booking', details: error.message });
   }
 });
 // Create new booking (Auto-detects if it's a Future Reservation)
