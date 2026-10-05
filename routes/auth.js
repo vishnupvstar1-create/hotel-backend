@@ -25,7 +25,7 @@ router.post('/login', async (req, res) => {
     const token = jwt.sign(
       { id: admin._id, role: admin.role },
       process.env.JWT_SECRET,
-      { expiresIn: '7d' } // Token expires in 7 days, forcing a re-login
+      { expiresIn: '7d' } 
     );
 
     // 4. Send the user data and token back to React
@@ -39,6 +39,35 @@ router.post('/login', async (req, res) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Server error during login' });
+  }
+});
+
+// POST /api/auth/create-admin
+router.post('/create-admin', async (req, res) => {
+  try {
+    const { username, password, role } = req.body;
+
+    // 1. Check if user already exists
+    const existingAdmin = await Admin.findOne({ username });
+    if (existingAdmin) {
+      return res.status(400).json({ message: 'Username already taken' });
+    }
+
+    // 2. Create the user 
+    // (Because you have matchPassword on your model, your Admin schema 
+    // likely hashes this automatically when .save() is called)
+    const newAdmin = new Admin({
+      username,
+      password,
+      role: role || 'staff' 
+    });
+
+    await newAdmin.save();
+    res.status(201).json({ message: 'New admin created successfully!' });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error during creation' });
   }
 });
 
