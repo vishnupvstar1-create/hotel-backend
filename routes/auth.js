@@ -71,4 +71,39 @@ router.post('/create-admin', async (req, res) => {
   }
 });
 
+// POST /api/auth/change-password
+router.post('/change-password', async (req, res) => {
+  try {
+    // 1. Get the token from the header
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ message: 'Unauthorized' });
+    }
+    const token = authHeader.split(' ')[1];
+
+    // 2. Verify who is making the request
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const { currentPassword, newPassword } = req.body;
+
+    // 3. Find the user and verify the current temporary password
+    const admin = await Admin.findById(decoded.id);
+    if (!admin) return res.status(404).json({ message: 'User not found' });
+
+    const isMatch = await admin.matchPassword(currentPassword);
+    if (!isMatch) {
+      return res.status(400).json({ message: 'Incorrect current password' });
+    }
+
+    // 4. Update and save (Your Mongoose model will automatically hash this new password!)
+    admin.password = newPassword;
+    await admin.save();
+
+    res.json({ message: 'Password updated successfully!' });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Server error during password change' });
+  }
+});
+
 export default router;
