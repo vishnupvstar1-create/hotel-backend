@@ -1,6 +1,7 @@
 import express from 'express';
 import { Booking } from '../models/Booking.js';
 import { Order } from '../models/Order.js';
+import { Room } from '../models/Room.js';
 
 const router = express.Router();
 
@@ -8,6 +9,37 @@ const router = express.Router();
 router.get('/bookings', async (req, res) => {
   const bookings = await Booking.find().sort({ createdAt: -1 });
   res.json(bookings);
+});
+
+// --- ROOM ROUTES ---
+// POST: Add a new room to inventory
+router.post('/rooms', async (req, res) => { // <-- CHANGED app.post to router.post
+  try {
+    const { roomType, roomNumber, roomRate, description, status } = req.body;
+    
+    const newRoom = new Room({
+      roomType,
+      roomNumber,
+      roomRate,
+      description,
+      status: status || 'Available'
+    });
+
+    const savedRoom = await newRoom.save();
+    res.status(201).json(savedRoom);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// GET: Fetch all inventory rooms
+router.get('/rooms', async (req, res) => { // <-- CHANGED app.get to router.get
+  try {
+    const rooms = await Room.find();
+    res.status(200).json(rooms);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 });
 // POST /api/public/book
 router.post('/public/book', async (req, res) => {
@@ -17,7 +49,7 @@ router.post('/public/book', async (req, res) => {
     // 1. Determine the room rate based on the selection
     let roomRate = 7500;
     if (roomType === 'Deluxe') roomRate = 15000;
-    if (roomType === 'Super Luxury') roomRate = 20500;
+    if (roomType === 'Super Luxury') roomRate = 20000;
 
     // 2. Calculate the total charge (Days * Rate)
     const checkIn = new Date(checkInDate);
