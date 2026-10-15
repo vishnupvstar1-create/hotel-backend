@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 
+
 const roomSchema = new mongoose.Schema({
   roomType: { 
     type: String, 
@@ -21,10 +22,11 @@ const roomSchema = new mongoose.Schema({
   },
   status: { 
     type: String, 
-    required: true,
-    enum: ['Available', 'Maintenance'],
-    default: 'Available'
-  }
+    required: true, 
+    enum: ['Available', 'Maintenance', 'Occupied', 'Reserved'], 
+    default: 'Available' 
+  },
+  facilities: { type: [String], default: [] }
 }, { timestamps: true });
 
 export const Room = mongoose.model('Room', roomSchema);

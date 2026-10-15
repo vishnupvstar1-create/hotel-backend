@@ -41,6 +41,19 @@ router.get('/rooms', async (req, res) => { // <-- CHANGED app.get to router.get
     res.status(500).json({ message: error.message });
   }
 });
+// PUT: Update an existing room's status or facilities
+router.put('/rooms/:id', async (req, res) => {
+  try {
+    const updatedRoom = await Room.findByIdAndUpdate(
+      req.params.id, 
+      req.body, 
+      { new: true }
+    );
+    res.json(updatedRoom);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
 // POST /api/public/book
 router.post('/public/book', async (req, res) => {
   try {
