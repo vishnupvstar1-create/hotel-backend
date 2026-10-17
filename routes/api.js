@@ -129,26 +129,60 @@ router.post('/bookings', async (req, res) => {
 // Update booking (Handles extensions and prevents conflicts)
 router.put('/bookings/:id', async (req, res) => {
   try {
-    const { roomNumber, checkInDate, checkOutDate } = req.body;
+    const bookingId = req.params.id;
+    const updateData = req.body;
 
-    // Check if the requested extension overlaps with any OTHER upcoming booking
-    const conflict = await Booking.findOne({
-      _id: { $ne: req.params.id }, // Ignore the current booking itself
-      roomNumber,
-      status: { $in: ['Checked-In', 'Reserved'] },
-      $or: [
-        { checkInDate: { $lt: checkOutDate }, checkOutDate: { $gt: checkInDate } }
-      ]
-    });
+    // 1. Intercept and recalculate pricing if dates and room type are present
+    if (updateData.checkInDate && updateData.checkOutDate && updateData.roomType) {
+      const inDate = new Date(updateData.checkInDate);
+      const outDate = new Date(updateData.checkOutDate);
+      
+      // Calculate the difference in days (nights)
+      const diffTime = outDate.getTime() - inDate.getTime();
+      const nights = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
-    if (conflict) {
-      return res.status(400).json({ error: 'Cannot extend! Room is already reserved by another guest for these dates.' });
+      // Define your official rates (or fetch them using await Room.findOne({ roomType: ... }))
+      const officialRates = {
+        'Normal': 7500,
+        'Deluxe': 15000,
+        'Super Luxury': 20000 // Adjust these to match your actual rates
+      };
+
+      const nightlyRate = officialRates[updateData.roomType] || 0;
+
+      // Only update the charge if the dates are valid
+      if (nights > 0) {
+        updateData.totalRoomCharge = nights * nightlyRate;
+      }
     }
 
-    const updatedBooking = await Booking.findByIdAndUpdate(req.params.id, req.body, { new: true });
-    res.json(updatedBooking);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+    // 2. Perform the update with the newly calculated data
+    const updatedBooking = await Booking.findByIdAndUpdate(
+      bookingId,
+      updateData,
+      { 
+        new: true,           
+        runValidators: true  
+      }
+    );
+
+    if (!updatedBooking) {
+      return res.status(404).json({ message: 'Booking not found.' });
+    }
+
+    res.status(200).json({ 
+      message: 'Booking updated successfully', 
+      booking: updatedBooking 
+    });
+
+  } catch (error) {
+    console.error('UPDATE BOOKING ERROR:', error);
+    
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ message: error.message });
+    }
+
+    res.status(500).json({ message: 'Failed to update booking on the server.' });
   }
 });
 router.get('/bookings/:id/checkout', async (req, res) => {
